@@ -53,7 +53,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p build
-          godot --headless --path . --export-debug "Android" build/MundoAutonomo-0.1.1-debug.apk 2>&1 | tee /tmp/godot-export.log
+          HOME=/root godot --headless --path . --export-debug "Android" build/MundoAutonomo-0.1.1-debug.apk 2>&1 | tee /tmp/godot-export.log
           test -s build/MundoAutonomo-0.1.1-debug.apk
           unzip -t build/MundoAutonomo-0.1.1-debug.apk | tail -1
 
