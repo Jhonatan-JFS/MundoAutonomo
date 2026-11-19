@@ -48,6 +48,16 @@ jobs:
           godot --headless --path . --quit-after 60 2>&1 | tee /tmp/godot-smoke.log
           if grep -E '(SCRIPT ERROR|Parse Error:)' /tmp/godot-smoke.log; then exit 1; fi
 
+      - name: Preparar Android SDK 35
+        shell: bash
+        run: |
+          set -o pipefail
+          yes | sdkmanager --sdk_root=/usr/lib/android-sdk --licenses >/dev/null || true
+          sdkmanager --sdk_root=/usr/lib/android-sdk "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+          ls -l /root/.local/share/godot/export_templates/4.5.2.stable/android_debug.apk
+          java -version
+          ls /usr/lib/android-sdk/build-tools/
+
       - name: Gerar APK Android ARM64
         shell: bash
         run: |
