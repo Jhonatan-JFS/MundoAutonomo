@@ -1,0 +1,66 @@
+name: Compilar APK Android (Mundo Autônomo)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Validar simulação e gerar APK debug
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    container:
+      image: barichello/godot-ci:4.5.2
+
+    steps:
+      - name: Obter projeto
+        uses: actions/checkout@v4
+
+      - name: Verificar ambiente e modelos de exportação
+        shell: bash
+        run: |
+          godot --version
+          ls -la /root/.local/share/godot/export_templates || true
+
+      - name: Importar projeto e validar scripts
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --editor --path . --import 2>&1 | tee /tmp/godot-import.log
+          if grep -E '(SCRIPT ERROR|Parse Error:)' /tmp/godot-import.log; then exit 1; fi
+
+      - name: Testes da simulação
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script res://tests/test_world.gd 2>&1 | tee /tmp/godot-tests.log
+          grep -F 'WORLD_TESTS_OK' /tmp/godot-tests.log
+          if grep -E '(SCRIPT ERROR|Parse Error:)' /tmp/godot-tests.log; then exit 1; fi
+
+      - name: Teste inicial do cenário
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --quit-after 60 2>&1 | tee /tmp/godot-smoke.log
+          if grep -E '(SCRIPT ERROR|Parse Error:)' /tmp/godot-smoke.log; then exit 1; fi
+
+      - name: Gerar APK Android ARM64
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build
+          godot --headless --path . --export-debug "Android" build/MundoAutonomo-0.1.1-debug.apk 2>&1 | tee /tmp/godot-export.log
+          test -s build/MundoAutonomo-0.1.1-debug.apk
+          unzip -t build/MundoAutonomo-0.1.1-debug.apk | tail -1
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MundoAutonomo-0.1.1-Android-APK
+          path: build/MundoAutonomo-0.1.1-debug.apk
+          retention-days: 30
+          if-no-files-found: error
